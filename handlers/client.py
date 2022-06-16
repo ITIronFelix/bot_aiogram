@@ -37,6 +37,7 @@ async def new_base(message : types.Message):
     base.execute('CREATE TABLE IF NOT EXISTS {}(check_profile int, check_sig int, check_spin int)'.format("checks"))
     cur.execute('INSERT INTO checks VALUES(?, ?, ?)',
                 (0, 0, 0))
+    base.execute('CREATE TABLE IF NOT EXISTS {}(time, description)'.format("note_tomorrow"))
     base.commit()
     base.close()
 
@@ -103,6 +104,27 @@ async def siga(message : types.Message):
         await change_profile(message, 'checks', 'check_sig', "0")
         await bot.send_message(message.chat.id, 'Кнопка отключена', reply_markup=types.ReplyKeyboardRemove())
 
+async def note_tomorrow_show (message : types.Message):
+    path = 'user_profiles/' + str(message.from_user.id) + '.db'
+    base = sqlite3.connect(path)
+    cur = base.cursor()
+    time = cur.execute('SELECT * FROM note_tomorrow ORDER BY time ASC').fetchall()
+    lst = [*(x for t in time for x in t)]
+    i = 0
+    list = []
+    while i < len(lst):
+        list.append(lst[i] + " " + lst[i + 1])
+        i += 2
+    base.close()
+    await bot.send_message(message.chat.id, "\n".join(list))
+
+
+    # # description = cur.execute('SELECT description FROM note_tomorrow').fetchall()
+    # base.close()
+    #
+    # await bot.send_message(message.chat.id, str(time))
+    # await bot.send_message(message.chat.id, type(description))
+    #
 
 # @bot.message_handler()
 async def echo_send(message : types.Message):
@@ -112,8 +134,8 @@ async def echo_send(message : types.Message):
 
 
 
-
 def register_handlers_client(dp : Dispatcher):
     dp.register_message_handler(start, commands=['start'])
     dp.register_message_handler(siga, commands=['sig'])
-    dp.register_message_handler(echo_send)
+    dp.register_message_handler(note_tomorrow_show, commands=['note-tomorrow'])
+    dp.register_message_handler(echo_send, text = '🚬')
