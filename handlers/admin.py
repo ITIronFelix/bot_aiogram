@@ -5,6 +5,7 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram import types
 from aiogram.dispatcher.filters import Text
 
+
 class FSMAdmin(StatesGroup):
     photo = State()
     name = State()

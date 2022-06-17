@@ -70,4 +70,3 @@ def register_handlers_note(dp : Dispatcher):
     dp.register_callback_query_handler(listener)
     dp.register_message_handler(add_time, state=FSM_note_tommorow_add.addtime)
     dp.register_message_handler(add_discription, state=FSM_note_tommorow_add.adddiscription)
-#     # dp.register_message_handler(change_note, state=FSM_note_tommorow.cnange)

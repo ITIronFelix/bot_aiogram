@@ -1,5 +1,5 @@
 from aiogram import types, Dispatcher
-from create_bot import dp, bot
+from create_bot import bot
 import sqlite3
 import os.path
 import datetime
@@ -34,9 +34,9 @@ async def new_base(message : types.Message):
     base.execute('CREATE TABLE IF NOT EXISTS {}(date, sig_today int, sig_yesterday int, sig_in_week int, sig_in_mounth int, total_sig int)'.format("statistics"))
     cur.execute('INSERT INTO statistics VALUES(?, ?, ?, ?, ?, ?)',
                 (dtn.strftime("%d-%m-%Y"), 0, 0, 0, 0, 0))
-    base.execute('CREATE TABLE IF NOT EXISTS {}(check_profile int, check_sig int, check_spin int)'.format("checks"))
-    cur.execute('INSERT INTO checks VALUES(?, ?, ?)',
-                (0, 0, 0))
+    base.execute('CREATE TABLE IF NOT EXISTS {}(check_profile int, check_keyboard int)'.format("checks"))
+    cur.execute('INSERT INTO checks VALUES(?, ?)',
+                (0, 0))
     base.execute('CREATE TABLE IF NOT EXISTS {}(time, description)'.format("note_tomorrow"))
     base.commit()
     base.close()
@@ -92,17 +92,7 @@ async def start(message: types.Message):
         await new_base(message)
     await bot.send_message(message.from_user.id, 'mess')
 
-# @bot.message_handler(commands=['sig'])
-async def siga(message : types.Message):
-    if await check(message, 'check_sig') == False:
-        keyboard = types.ReplyKeyboardMarkup(resize_keyboard = True)
-        knopka = types.KeyboardButton("🚬")
-        keyboard.add(knopka)
-        await bot.send_message(message.chat.id, 'Нажми на кнопку, когда покуришь', reply_markup = keyboard)
-        await change_profile(message, 'checks', 'check_sig', "1")
-    elif await check(message, 'check_sig') == True:
-        await change_profile(message, 'checks', 'check_sig', "0")
-        await bot.send_message(message.chat.id, 'Кнопка отключена', reply_markup=types.ReplyKeyboardRemove())
+
 
 async def note_tomorrow_show (message : types.Message):
     path = 'user_profiles/' + str(message.from_user.id) + '.db'
@@ -119,13 +109,6 @@ async def note_tomorrow_show (message : types.Message):
     await bot.send_message(message.chat.id, "\n".join(list))
 
 
-    # # description = cur.execute('SELECT description FROM note_tomorrow').fetchall()
-    # base.close()
-    #
-    # await bot.send_message(message.chat.id, str(time))
-    # await bot.send_message(message.chat.id, type(description))
-    #
-
 # @bot.message_handler()
 async def echo_send(message : types.Message):
     if message.text == '🚬':
@@ -136,6 +119,5 @@ async def echo_send(message : types.Message):
 
 def register_handlers_client(dp : Dispatcher):
     dp.register_message_handler(start, commands=['start'])
-    dp.register_message_handler(siga, commands=['sig'])
-    dp.register_message_handler(note_tomorrow_show, commands=['note-tomorrow'])
+    dp.register_message_handler(note_tomorrow_show, commands=['plans'])
     dp.register_message_handler(echo_send, text = '🚬')
