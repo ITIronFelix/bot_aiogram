@@ -106,7 +106,7 @@ async def note_tomorrow_show (message : types.Message):
         list.append(lst[i] + " " + lst[i + 1])
         i += 2
     base.close()
-    await bot.send_message(message.chat.id, "\n".join(list))
+    await bot.send_message(message.chat.id, 'Ваши планы на завтра:' + "\n\n" + "\n".join(list))
 
 
 # @bot.message_handler()
