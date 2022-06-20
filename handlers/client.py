@@ -38,6 +38,7 @@ async def new_base(message : types.Message):
     cur.execute('INSERT INTO checks VALUES(?, ?)',
                 (0, 0))
     base.execute('CREATE TABLE IF NOT EXISTS {}(time, description)'.format("note_tomorrow"))
+    base.execute('CREATE TABLE IF NOT EXISTS {}(time, description, status)'.format("note_today"))
     base.commit()
     base.close()
 
@@ -108,6 +109,20 @@ async def note_tomorrow_show (message : types.Message):
     base.close()
     await bot.send_message(message.chat.id, 'Ваши планы на завтра:' + "\n\n" + "\n".join(list))
 
+async def note_today_show (message : types.Message):
+    path = 'user_profiles/' + str(message.from_user.id) + '.db'
+    base = sqlite3.connect(path)
+    cur = base.cursor()
+    time = cur.execute('SELECT * FROM note_today ORDER BY time ASC').fetchall()
+    lst = [*(x for t in time for x in t)]
+    i = 0
+    list = []
+    while i < len(lst):
+        list.append(lst[i] + " " + lst[i + 1] + " " + lst[i+2])
+        i += 3
+    base.close()
+    await bot.send_message(message.chat.id, 'Ваши задачи сегодня:' + "\n\n" + "\n".join(list))
+
 
 # @bot.message_handler()
 async def echo_send(message : types.Message):
@@ -120,4 +135,5 @@ async def echo_send(message : types.Message):
 def register_handlers_client(dp : Dispatcher):
     dp.register_message_handler(start, commands=['start'])
     dp.register_message_handler(note_tomorrow_show, commands=['plans'])
+    dp.register_message_handler(note_today_show, commands=['tasks'])
     dp.register_message_handler(echo_send, text = '🚬')

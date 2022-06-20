@@ -27,10 +27,11 @@ async def keybord_sig_tasks_plans_change(message : types.Message):
     if await check(message, 'check_keyboard') == False:
         keyboard = types.ReplyKeyboardMarkup(resize_keyboard= True)
         button1 = types.KeyboardButton("🚬")
-        button2 = types.KeyboardButton('/note')
+        button2 = types.KeyboardButton('/plans_change')
         button3 = types.KeyboardButton('/plans')
         button4 = types.KeyboardButton('/tasks')
-        keyboard.add(button1, button2, button3, button4)
+        button5 = types.KeyboardButton('/tasks_change')
+        keyboard.add(button1, button2, button3, button4, button5)
         await bot.send_message(message.chat.id, "Клавиатура подключена", reply_markup= keyboard)
         await change_profile(message, 'checks', 'check_keyboard', "1")
     elif await check(message, 'check_keyboard') == True:
