@@ -129,7 +129,8 @@ async def echo_send(message : types.Message):
     if message.text == '🚬':
         await change_profile_sig_plus_one(message)
 
-
+async def test (message : types.Message):
+    await bot.send_message(847088740, 'hi')
 
 
 def register_handlers_client(dp : Dispatcher):
@@ -137,3 +138,4 @@ def register_handlers_client(dp : Dispatcher):
     dp.register_message_handler(note_tomorrow_show, commands=['plans'])
     dp.register_message_handler(note_today_show, commands=['tasks'])
     dp.register_message_handler(echo_send, text = '🚬')
+    dp.register_message_handler(test, commands=['test'])
