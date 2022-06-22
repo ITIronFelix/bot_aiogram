@@ -2,7 +2,6 @@ from aiogram.utils import executor
 from create_bot import dp, bot
 import asyncio
 import aioschedule
-import time
 
 
 from handlers import client,admin,other,note_tomorrow,note_today
@@ -17,7 +16,7 @@ keyboard_ed.register_handlers_keyboard_ed(dp)
 
 
 
-from just_in_time.good_morning import hello
+from just_in_time.good_morning import hello, sing
 
 
 
@@ -25,6 +24,7 @@ from just_in_time.good_morning import hello
 
 async def scheduler():
     aioschedule.every().day.at("22:31").do(hello)
+    aioschedule.every().minute.do(sing)
     while True:
         await aioschedule.run_pending()
         await asyncio.sleep(1)
