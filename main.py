@@ -16,7 +16,7 @@ keyboard_ed.register_handlers_keyboard_ed(dp)
 
 
 
-from just_in_time.good_morning import hello, sing
+from just_in_time.good_morning import hello, sing, note_swap
 
 
 
@@ -24,6 +24,7 @@ from just_in_time.good_morning import hello, sing
 
 async def scheduler():
     aioschedule.every().day.at("22:31").do(hello)
+    aioschedule.every().day.at("19:41").do(note_swap)
     aioschedule.every().minute.do(sing)
     while True:
         await aioschedule.run_pending()

@@ -3,25 +3,7 @@ from create_bot import bot
 import sqlite3
 import os.path
 import datetime
-profile_baza = {
-            "name": "",
-            "sex": "",
-            "age": 0,
-            "bahcoin": 0,
-            "sig_in_day": 0,
-            "sig_yesterday" : 0,
-            "sig_in_week": 0,
-            "sig_in_mounth": 0,
-            "total_sig": 0,
-            "check_profile": 0,
-            "check_sig": 0,
-            'check_spin': 0,
-            'note_tomorrow1': "Пусто",
-            'note_tomorrow2': "Пусто",
-            'note_tomorrow3': "Пусто",
-            'note_tomorrow4': "Пусто",
-            'note_tomorrow5': "Пусто"
-    }
+
 dtn = datetime.datetime.now()
 
 async def new_base(message : types.Message):
@@ -31,9 +13,9 @@ async def new_base(message : types.Message):
     base.execute('CREATE TABLE IF NOT EXISTS {}(id int, first_name text, last_name text, sex text, age int, sig_in_day int, bahcoin int)'.format("profile"))
     cur.execute('INSERT INTO profile VALUES(?, ?, ?, ?, ?, ?, ?)',
                 (message.from_user.id, message.from_user.first_name, message.from_user.last_name, "", 0, 0, 0))
-    base.execute('CREATE TABLE IF NOT EXISTS {}(date, sig_today int, sig_yesterday int, sig_in_week int, sig_in_mounth int, total_sig int)'.format("statistics"))
-    cur.execute('INSERT INTO statistics VALUES(?, ?, ?, ?, ?, ?)',
-                (dtn.strftime("%d-%m-%Y"), 0, 0, 0, 0, 0))
+    base.execute('CREATE TABLE IF NOT EXISTS {}(date_full, date_day, date_mounth, date_year, sig_today int, total_sig int)'.format("statistics_sig"))
+    cur.execute('INSERT INTO statistics_sig VALUES(?, ?, ?, ?, ?, ?)',
+                (dtn.strftime("%d.%m.%Y"), dtn.strftime("%d"), dtn.strftime("%m"), dtn.strftime("%y"), 0, 0))
     base.execute('CREATE TABLE IF NOT EXISTS {}(check_profile int, check_keyboard int)'.format("checks"))
     cur.execute('INSERT INTO checks VALUES(?, ?)',
                 (0, 0))
@@ -62,29 +44,45 @@ async def change_profile(message : types.Message, table, column, value):
     base.close()
 
 async def change_profile_sig_plus_one(message : types.Message):
-    a = 0
     path = 'user_profiles/' + str(message.from_user.id) + '.db'
     base = sqlite3.connect(path)
     cur = base.cursor()
-    r = cur.execute(f'SELECT sig_in_week FROM statistics').fetchone()
-    a = int(r[0])
+    r = cur.execute('SELECT sig_today FROM statistics_sig WHERE date_full == ?', (dtn.strftime("%d.%m.%Y"),)).fetchall()
+    lst = [*(x for t in r for x in t)]
+    if len(lst) == False:
+        r = cur.execute('SELECT total_sig FROM statistics_sig ORDER BY date_full DESC').fetchone()
+        cur.execute('INSERT INTO statistics_sig VALUES(?, ?, ?, ?, ?, ?)',
+                    (dtn.strftime("%d.%m.%Y"), dtn.strftime("%d"), dtn.strftime("%m"), dtn.strftime("%y"), 0, r[0]))
+        base.commit()
+    r = cur.execute('SELECT sig_today, total_sig FROM statistics_sig WHERE date_full == ?', (dtn.strftime("%d.%m.%Y"),)).fetchall()
+    a = int(r[0][0])
+    b = int(r[0][1])
     a += 1
-    cur.execute(f"UPDATE statistics SET sig_in_week == ? WHERE date == ?", (a, dtn.strftime("%d-%m-%Y")))
-    r = cur.execute(f'SELECT sig_in_mounth FROM statistics').fetchone()
-    a = int(r[0])
-    a += 1
-    cur.execute(f"UPDATE statistics SET sig_in_mounth == ? WHERE date == ?", (a, dtn.strftime("%d-%m-%Y")))
-    r = cur.execute(f'SELECT total_sig FROM statistics').fetchone()
-    a = int(r[0])
-    a += 1
-    cur.execute(f"UPDATE statistics SET total_sig == ? WHERE date == ?", (a, dtn.strftime("%d-%m-%Y")))
-    r = cur.execute(f'SELECT sig_today FROM statistics').fetchone()
-    a = int(r[0])
-    a += 1
-    cur.execute(f"UPDATE statistics SET sig_today == ? WHERE date == ?", (a, dtn.strftime("%d-%m-%Y")))
+    b += 1
+    cur.execute(f"UPDATE statistics_sig SET sig_today == ? WHERE date_full == ?", (a, dtn.strftime("%d.%m.%Y")))
+    cur.execute(f"UPDATE statistics_sig SET total_sig == ? WHERE date_full == ?", (b, dtn.strftime("%d.%m.%Y")))
     base.commit()
     await message.reply(f'Сигарета учтена, вы сегодня выкурили: {a}')
     base.close()
+
+    # a = int(r[0])
+    # a += 1
+    # cur.execute(f"UPDATE statistics SET sig_in_week == ? WHERE date == ?", (a, dtn.strftime("%d-%m-%Y")))
+    # r = cur.execute(f'SELECT sig_in_mounth FROM statistics').fetchone()
+    # a = int(r[0])
+    # a += 1
+    # cur.execute(f"UPDATE statistics SET sig_in_mounth == ? WHERE date == ?", (a, dtn.strftime("%d-%m-%Y")))
+    # r = cur.execute(f'SELECT total_sig FROM statistics').fetchone()
+    # a = int(r[0])
+    # a += 1
+    # cur.execute(f"UPDATE statistics SET total_sig == ? WHERE date == ?", (a, dtn.strftime("%d-%m-%Y")))
+    # r = cur.execute(f'SELECT sig_today FROM statistics').fetchone()
+    # a = int(r[0])
+    # a += 1
+    # cur.execute(f"UPDATE statistics SET sig_today == ? WHERE date == ?", (a, dtn.strftime("%d-%m-%Y")))
+    # base.commit()
+    # await message.reply(f'Сигарета учтена, вы сегодня выкурили: {a}')
+    # base.close()
 
 # @dp.message_handler(commands=["start"])
 async def start(message: types.Message):

@@ -44,9 +44,9 @@ async def siga(message : types.Message):
         knopka = types.KeyboardButton("🚬")
         keyboard.add(knopka)
         await bot.send_message(message.chat.id, 'Нажми на кнопку, когда покуришь', reply_markup = keyboard)
-        await change_profile(message, 'checks', 'check_sig', "1")
+        await change_profile(message, 'checks', 'check_keyboard', "1")
     elif await check(message, 'check_keyboard') == True:
-        await change_profile(message, 'checks', 'check_sig', "0")
+        await change_profile(message, 'checks', 'check_keyboard', "0")
         await bot.send_message(message.chat.id, 'Кнопка отключена', reply_markup=types.ReplyKeyboardRemove())
 
 

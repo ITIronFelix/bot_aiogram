@@ -233,8 +233,8 @@ async def row_delete(callback : types.CallbackQuery, state: FSMContext):
 
 async def sms_start_tomorrow(message : types.Message):
     keyboard_sms = InlineKeyboardMarkup()
-    button_sms1 = InlineKeyboardButton(text = 'По всем', callback_data= 'sms_all')
-    button_sms2 = InlineKeyboardButton(text = 'По одному', callback_data= 'sms_one')
+    button_sms1 = InlineKeyboardButton(text = 'По всем', callback_data= 'sms_all_tomorrow')
+    button_sms2 = InlineKeyboardButton(text = 'По одному', callback_data= 'sms_one_tomorrow')
     keyboard_sms.add(button_sms1, button_sms2)
     await bot.send_message(message.chat.id, 'Вы хотите изменить статус оповещения по всем задачам или по одной конкретной?', reply_markup= keyboard_sms)
     await FSM_note_tomorrow_sms.sms_start.set()
@@ -242,13 +242,13 @@ async def sms_start_tomorrow(message : types.Message):
 async def sms_choose_tomorrow(callback : types.CallbackQuery, state : FSMContext):
     async with state.proxy() as data:
         data['choose'] = callback.data
-    if callback.data == 'sms_all':
+    if callback.data == 'sms_all_tomorrow':
         keyboard_sms_change_all = InlineKeyboardMarkup()
-        button_sms_change_all1 = InlineKeyboardButton(text='Включить уведомления', callback_data='sms_all_on')
-        button_sms_change_all2 = InlineKeyboardButton(text='Выключить уведомления', callback_data='sms_all_off')
+        button_sms_change_all1 = InlineKeyboardButton(text='Включить уведомления', callback_data='sms_all_on_tomorrow')
+        button_sms_change_all2 = InlineKeyboardButton(text='Выключить уведомления', callback_data='sms_all_off_tomorrow')
         keyboard_sms_change_all.add(button_sms_change_all1, button_sms_change_all2)
         await callback.message.answer('Включить или выключить уведомления?', reply_markup=keyboard_sms_change_all)
-    elif callback.data == 'sms_one':
+    elif callback.data == 'sms_one_tomorrow':
         path = 'user_profiles/' + str(callback.from_user.id) + '.db'
         base = sqlite3.connect(path)
         cur = base.cursor()
@@ -262,13 +262,13 @@ async def sms_choose_tomorrow(callback : types.CallbackQuery, state : FSMContext
                 InlineKeyboardButton(text=f'{lst[i]} {lst[i + 1]} {lst[i + 2]}', callback_data=f'{lst[i]}'))
             i += 3
         await callback.message.answer('Выберите запись', reply_markup=keyboard_time)
-        await FSM_note_tomorrow_sms.next()
+    await FSM_note_tomorrow_sms.next()
 
 
 async def sms_change_tomorrow(callback : types.CallbackQuery, state: FSMContext):
     async with state.proxy() as data:
         data['old_value'] = callback.data
-    if callback.data == 'sms_all_on':
+    if callback.data == 'sms_all_on_tomorrow':
         path = 'user_profiles/' + str(callback.from_user.id) + '.db'
         base = sqlite3.connect(path)
         cur = base.cursor()
@@ -276,10 +276,8 @@ async def sms_change_tomorrow(callback : types.CallbackQuery, state: FSMContext)
                     ("🕔", '❌'))
         base.commit()
         base.close()
-        await state.finish()
         await callback.message.answer('Уведомления включены')
-        await note_tomorrow_show_c(callback)
-    elif callback.data == 'sms_all_off':
+    elif callback.data == 'sms_all_off_tomorrow':
         path = 'user_profiles/' + str(callback.from_user.id) + '.db'
         base = sqlite3.connect(path)
         cur = base.cursor()
