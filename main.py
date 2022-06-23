@@ -1,8 +1,7 @@
 from aiogram.utils import executor
-from create_bot import dp, bot
+from create_bot import dp
 import asyncio
 import aioschedule
-
 
 from handlers import client,admin,other,note_tomorrow,note_today
 client.register_handlers_client(dp)
@@ -23,8 +22,8 @@ from just_in_time.good_morning import hello, sing, note_swap
 
 
 async def scheduler():
-    aioschedule.every().day.at("22:31").do(hello)
-    aioschedule.every().day.at("19:41").do(note_swap)
+    aioschedule.every().day.at("09:30").do(hello)
+    aioschedule.every().day.at("00:00").do(note_swap)
     aioschedule.every().minute.do(sing)
     while True:
         await aioschedule.run_pending()
@@ -34,6 +33,10 @@ async def on_startup(_):
     asyncio.create_task(scheduler())
 
 
+
+
+
+
+
 if __name__ == '__main__':
-    # executor.start_polling(dp, skip_updates=True)
     executor.start_polling(dp, skip_updates=True, on_startup=on_startup)

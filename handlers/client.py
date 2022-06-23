@@ -65,55 +65,87 @@ async def change_profile_sig_plus_one(message : types.Message):
     await message.reply(f'Сигарета учтена, вы сегодня выкурили: {a}')
     base.close()
 
-    # a = int(r[0])
-    # a += 1
-    # cur.execute(f"UPDATE statistics SET sig_in_week == ? WHERE date == ?", (a, dtn.strftime("%d-%m-%Y")))
-    # r = cur.execute(f'SELECT sig_in_mounth FROM statistics').fetchone()
-    # a = int(r[0])
-    # a += 1
-    # cur.execute(f"UPDATE statistics SET sig_in_mounth == ? WHERE date == ?", (a, dtn.strftime("%d-%m-%Y")))
-    # r = cur.execute(f'SELECT total_sig FROM statistics').fetchone()
-    # a = int(r[0])
-    # a += 1
-    # cur.execute(f"UPDATE statistics SET total_sig == ? WHERE date == ?", (a, dtn.strftime("%d-%m-%Y")))
-    # r = cur.execute(f'SELECT sig_today FROM statistics').fetchone()
-    # a = int(r[0])
-    # a += 1
-    # cur.execute(f"UPDATE statistics SET sig_today == ? WHERE date == ?", (a, dtn.strftime("%d-%m-%Y")))
-    # base.commit()
-    # await message.reply(f'Сигарета учтена, вы сегодня выкурили: {a}')
-    # base.close()
+async def otmena_sig(message : types.Message):
+    path = 'user_profiles/' + str(message.from_user.id) + '.db'
+    base = sqlite3.connect(path)
+    cur = base.cursor()
+    r = cur.execute('SELECT sig_today FROM statistics_sig WHERE date_full == ?', (dtn.strftime("%d.%m.%Y"),)).fetchall()
+    lst = [*(x for t in r for x in t)]
+    if len(lst) == False:
+        r = cur.execute('SELECT total_sig FROM statistics_sig ORDER BY date_full DESC').fetchone()
+        cur.execute('INSERT INTO statistics_sig VALUES(?, ?, ?, ?, ?, ?)',
+                    (dtn.strftime("%d.%m.%Y"), dtn.strftime("%d"), dtn.strftime("%m"), dtn.strftime("%y"), 0, r[0]))
+        base.commit()
+    r = cur.execute('SELECT sig_today, total_sig FROM statistics_sig WHERE date_full == ?', (dtn.strftime("%d.%m.%Y"),)).fetchall()
+    a = int(r[0][0])
+    b = int(r[0][1])
+    a -= 1
+    b -= 1
+    cur.execute(f"UPDATE statistics_sig SET sig_today == ? WHERE date_full == ?", (a, dtn.strftime("%d.%m.%Y")))
+    cur.execute(f"UPDATE statistics_sig SET total_sig == ? WHERE date_full == ?", (b, dtn.strftime("%d.%m.%Y")))
+    base.commit()
+    await message.reply(f'Сигарета учтена, вы сегодня выкурили: {a}')
+    base.close()
+
 
 # @dp.message_handler(commands=["start"])
 async def start(message: types.Message):
     path = 'user_profiles/' + str(message.from_user.id) + '.db'
     if os.path.isfile(path) == False:
         await new_base(message)
-    await bot.send_message(message.from_user.id, 'mess')
+    with open('texts/start.txt', 'r', encoding= 'UTF-8') as file:
+        mess = file.read()
+    await bot.send_message(message.from_user.id, mess)
 
+async def note_info(message : types.Message):
+    with open('texts/start.txt', 'r', encoding= 'UTF-8') as file:
+        mess = file.read()
+    await bot.send_message(message.chat.id, mess)
 
-
+async def otmena_sig(message : types.Message):
+    path = 'user_profiles/' + str(message.from_user.id) + '.db'
+    base = sqlite3.connect(path)
+    cur = base.cursor()
+    r = cur.execute('SELECT sig_today FROM statistics_sig WHERE date_full == ?', (dtn.strftime("%d.%m.%Y"),)).fetchall()
+    lst = [*(x for t in r for x in t)]
+    if len(lst) == False:
+        r = cur.execute('SELECT total_sig FROM statistics_sig ORDER BY date_full DESC').fetchone()
+        cur.execute('INSERT INTO statistics_sig VALUES(?, ?, ?, ?, ?, ?)',
+                    (dtn.strftime("%d.%m.%Y"), dtn.strftime("%d"), dtn.strftime("%m"), dtn.strftime("%y"), 0, r[0]))
+        base.commit()
+    r = cur.execute('SELECT sig_today, total_sig FROM statistics_sig WHERE date_full == ?', (dtn.strftime("%d.%m.%Y"),)).fetchall()
+    a = int(r[0][0])
+    b = int(r[0][1])
+    a -= 1
+    b -= 1
+    cur.execute(f"UPDATE statistics_sig SET sig_today == ? WHERE date_full == ?", (a, dtn.strftime("%d.%m.%Y")))
+    cur.execute(f"UPDATE statistics_sig SET total_sig == ? WHERE date_full == ?", (b, dtn.strftime("%d.%m.%Y")))
+    base.commit()
+    await message.reply(f'Сигарета вычтена, вы сегодня выкурили: {a}')
+    base.close()
 
 # @bot.message_handler()
 async def echo_send(message : types.Message):
     if message.text == '🚬':
         await change_profile_sig_plus_one(message)
 
-async def test (message : types.Message):
-    path = 'user_profiles/' + str(message.from_user.id) + '.db'
-    base = sqlite3.connect(path)
-    cur = base.cursor()
-    cur.execute('INSERT INTO note_tomorrow(time, description) SELECT time, description FROM note_today '
-                'WHERE status == ?', ('❌'))
-    cur.execute('DELETE FROM note_today')
-    cur.execute('INSERT INTO note_today(time, description) SELECT time, description FROM note_tomorrow')
-    cur.execute('UPDATE note_today SET status == ?', ('❌'))
-    cur.execute('DELETE FROM note_tomorrow')
-    base.commit()
-    base.close()
+# async def test (message : types.Message):
+#     path = 'user_profiles/' + str(message.from_user.id) + '.db'
+#     base = sqlite3.connect(path)
+#     cur = base.cursor()
+#     cur.execute('INSERT INTO note_tomorrow(time, description) SELECT time, description FROM note_today '
+#                 'WHERE status == ?', ('❌'))
+#     cur.execute('DELETE FROM note_today')
+#     cur.execute('INSERT INTO note_today(time, description) SELECT time, description FROM note_tomorrow')
+#     cur.execute('UPDATE note_today SET status == ?', ('❌'))
+#     cur.execute('DELETE FROM note_tomorrow')
+#     base.commit()
+#     base.close()
 
 
 def register_handlers_client(dp : Dispatcher):
     dp.register_message_handler(start, commands=['start'])
+    dp.register_message_handler(note_info, commands=['note_info'])
+    dp.register_message_handler(otmena_sig, commands=['otmena_sig'])
     dp.register_message_handler(echo_send, text = '🚬')
-    dp.register_message_handler(test, commands=['test'])
+    # dp.register_message_handler(test, commands=['test'])
