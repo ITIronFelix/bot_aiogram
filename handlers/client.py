@@ -6,6 +6,8 @@ import datetime
 
 dtn = datetime.datetime.now()
 
+
+
 async def new_base(message : types.Message):
     path = 'user_profiles/' + str(message.from_user.id) + '.db'
     base = sqlite3.connect(path)
@@ -124,28 +126,44 @@ async def otmena_sig(message : types.Message):
     await message.reply(f'Сигарета вычтена, вы сегодня выкурили: {a}')
     base.close()
 
-# @bot.message_handler()
+async def show_statistics_sig(message: types.Message):
+    sig_mounth = 0
+    sig_week = 0
+    path = 'user_profiles/' + str(message.from_user.id) + '.db'
+    base = sqlite3.connect(path)
+    cur = base.cursor()
+    today = cur.execute('SELECT sig_today FROM statistics_sig WHERE date_full == ?', (dtn.strftime("%d.%m.%Y"),)).fetchone()
+    total_sig = cur.execute('SELECT total_sig FROM statistics_sig ORDER BY date_full DESC').fetchone()
+    data = cur.execute('SELECT sig_today FROM statistics_sig WHERE date_mounth == ?', (dtn.strftime("%m"),)).fetchall()
+    lst = [*(x for t in data for x in t)]
+    for item in lst:
+        sig_mounth += int(item)
+    data = cur.execute('SELECT sig_today FROM statistics_sig ORDER BY sig_today ASC').fetchmany(7)
+    lst = [*(x for t in data for x in t)]
+    for item in lst:
+        sig_week += int(item)
+    mess = f"Ваша статистика выкуренных сигарет:\n" \
+           f"Сигарет за сегодня: {today[0]}\n" \
+           f"Сигарет за последние 7 дней: {sig_week}\n" \
+           f"Сигарет за этот месяц: {sig_mounth}\n" \
+           f"Cигарет всего: {total_sig[0]}"
+    await bot.send_message(message.chat.id, mess)
+
+
 async def echo_send(message : types.Message):
     if message.text == '🚬':
         await change_profile_sig_plus_one(message)
 
-# async def test (message : types.Message):
-#     path = 'user_profiles/' + str(message.from_user.id) + '.db'
-#     base = sqlite3.connect(path)
-#     cur = base.cursor()
-#     cur.execute('INSERT INTO note_tomorrow(time, description) SELECT time, description FROM note_today '
-#                 'WHERE status == ?', ('❌'))
-#     cur.execute('DELETE FROM note_today')
-#     cur.execute('INSERT INTO note_today(time, description) SELECT time, description FROM note_tomorrow')
-#     cur.execute('UPDATE note_today SET status == ?', ('❌'))
-#     cur.execute('DELETE FROM note_tomorrow')
-#     base.commit()
-#     base.close()
+
+
+async def test(message : types.Message):
+    await bot.send_message(message.chat.id, message.from_user.id)
 
 
 def register_handlers_client(dp : Dispatcher):
     dp.register_message_handler(start, commands=['start'])
     dp.register_message_handler(note_info, commands=['note_info'])
+    dp.register_message_handler(show_statistics_sig, commands=['statistics_sig'])
     dp.register_message_handler(otmena_sig, commands=['otmena_sig'])
     dp.register_message_handler(echo_send, text = '🚬')
-    # dp.register_message_handler(test, commands=['test'])
+    dp.register_message_handler(test, commands=['test'])

@@ -24,8 +24,8 @@ class FSM_note_tomorrow_sms(StatesGroup):
     sms_start = State()
     sms_change_tomorrow = State()
 
-async def note_tomorrow_show_m (message : types.Message):
-    path = 'user_profiles/' + str(message.from_user.id) + '.db'
+async def note_tomorrow_show_m(id):
+    path = 'user_profiles/' + str(id) + '.db'
     base = sqlite3.connect(path)
     cur = base.cursor()
     time = cur.execute('SELECT * FROM note_tomorrow ORDER BY time ASC').fetchall()
@@ -37,9 +37,9 @@ async def note_tomorrow_show_m (message : types.Message):
             list.append(lst[i] + " " + lst[i + 1] + " " + lst[i+2])
             i += 3
         base.close()
-        await bot.send_message(message.chat.id, 'Ваши планы на завтра:' + "\n\n" + "\n".join(list))
+        await bot.send_message(id, 'Ваши планы на завтра:' + "\n\n" + "\n".join(list))
     else:
-        await bot.send_message(message.chat.id, 'У вас нет планов на завтра')
+        await bot.send_message(id, 'У вас нет планов на завтра')
 
 async def note_tomorrow_show_c(callback : types.CallbackQuery):
     path = 'user_profiles/' + str(callback.from_user.id) + '.db'
@@ -138,7 +138,7 @@ async def add_discription_tomorrow(callback: types.CallbackQuery, state: FSMCont
             base.commit()
             base.close()
         await state.finish()
-        await note_tomorrow_show_c(callback)
+        await note_tomorrow_show_m(callback.from_user.id)
     elif callback.data == 'sms_tomorrow_n':
         async with state.proxy() as data:
             path = 'user_profiles/' + str(callback.from_user.id) + '.db'

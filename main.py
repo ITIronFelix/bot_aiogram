@@ -22,7 +22,7 @@ from just_in_time.good_morning import hello, sing, note_swap
 
 
 async def scheduler():
-    aioschedule.every().day.at("09:30").do(hello)
+    aioschedule.every().day.at("08:30").do(hello)
     aioschedule.every().day.at("00:00").do(note_swap)
     aioschedule.every().minute.do(sing)
     while True:
