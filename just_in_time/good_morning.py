@@ -50,7 +50,6 @@ async def note_swap():
     for filename in os.listdir("user_profiles"):
         if path.splitext(filename)[1] == '.db':
             path1 = 'user_profiles/' + filename
-            chat = path.splitext(filename)[0]
             base = sqlite3.connect(path1)
             cur = base.cursor()
             cur.execute('INSERT INTO note_tomorrow(time, description, status) SELECT time, description, status FROM note_today '
