@@ -258,91 +258,7 @@ async def row_delete_today(callback : types.CallbackQuery, state: FSMContext):
         await note_today_show(callback.from_user.id)
 
 
-async def sms_start_today(message : types.Message):
-    keyboard_sms = InlineKeyboardMarkup()
-    button_sms1 = InlineKeyboardButton(text = 'По всем', callback_data= 'sms_all')
-    button_sms2 = InlineKeyboardButton(text = 'По одному', callback_data= 'sms_one')
-    keyboard_sms.add(button_sms1, button_sms2)
-    await bot.send_message(message.chat.id, 'Вы хотите изменить статус оповещения по всем задачам или по одной конкретной?', reply_markup= keyboard_sms)
-    await FSM_note_today_sms.sms_start.set()
 
-async def sms_choose_today(callback : types.CallbackQuery, state : FSMContext):
-    async with state.proxy() as data:
-        data['choose'] = callback.data
-    if callback.data == 'sms_all':
-        keyboard_sms_change_all = InlineKeyboardMarkup()
-        button_sms_change_all1 = InlineKeyboardButton(text='Включить уведомления', callback_data='sms_all_on')
-        button_sms_change_all2 = InlineKeyboardButton(text='Выключить уведомления', callback_data='sms_all_off')
-        keyboard_sms_change_all.add(button_sms_change_all1, button_sms_change_all2)
-        await callback.message.answer('Включить или выключить уведомления?', reply_markup=keyboard_sms_change_all)
-    elif callback.data == 'sms_one':
-        path = 'user_profiles/' + str(callback.from_user.id) + '.db'
-        base = sqlite3.connect(path)
-        cur = base.cursor()
-        time = cur.execute('SELECT time, description, status FROM note_today ORDER BY time ASC').fetchall()
-        lst = [*(x for t in time for x in t)]
-        base.close()
-        keyboard_time = InlineKeyboardMarkup()
-        i = 0
-        while i < len(lst):
-            keyboard_time.add(
-                InlineKeyboardButton(text=f'{lst[i]} {lst[i + 1]} {lst[i + 2]}', callback_data=f'{lst[i]}'))
-            i += 3
-        await callback.message.answer('Выберите запись', reply_markup=keyboard_time)
-        await FSM_note_today_sms.next()
-
-
-
-async def sms_change_today(callback : types.CallbackQuery, state: FSMContext):
-    async with state.proxy() as data:
-        data['old_value'] = callback.data
-    if callback.data == 'sms_all_on':
-        path = 'user_profiles/' + str(callback.from_user.id) + '.db'
-        base = sqlite3.connect(path)
-        cur = base.cursor()
-        cur.execute(f"UPDATE note_today SET status == ? WHERE status == ?",
-                    ("🕔", '❌'))
-        base.commit()
-        base.close()
-        await state.finish()
-        await callback.message.answer('Уведомления включены')
-        await note_today_show(callback.from_user.id)
-    elif callback.data == 'sms_all_off':
-        path = 'user_profiles/' + str(callback.from_user.id) + '.db'
-        base = sqlite3.connect(path)
-        cur = base.cursor()
-        cur.execute(f"UPDATE note_today SET status == ? WHERE status == ?",
-                    ('❌', "🕔"))
-        base.commit()
-        base.close()
-        await callback.message.answer('Уведомления отключены')
-    else:
-        path = 'user_profiles/' + str(callback.from_user.id) + '.db'
-        base = sqlite3.connect(path)
-        cur = base.cursor()
-        time = cur.execute('SELECT time FROM note_today').fetchall()
-        base.close()
-        lst = [*(x for t in time for x in t)]
-        if callback.data not in lst:
-            await callback.message.answer("Жми кнопки :)")
-            return
-        else:
-            async with state.proxy() as data:
-                path = 'user_profiles/' + str(callback.from_user.id) + '.db'
-                base = sqlite3.connect(path)
-                cur = base.cursor()
-                r = cur.execute(f'SELECT status FROM note_today WHERE time == ?', (data['old_value'],)).fetchone()
-                if r[0] == '❌' or r[0] == '✅':
-                    cur.execute(f"UPDATE note_today SET status == ? WHERE time == ?",
-                                ("🕔", data['old_value']))
-                else:
-                    cur.execute(f"UPDATE note_today SET status == ? WHERE time == ?",
-                                ('❌', data['old_value']))
-                base.commit()
-                base.close()
-                await callback.message.answer('Статус изменен')
-    await state.finish()
-    await note_today_show(callback.from_user.id)
 
 
 async def cmd_cancel(message: types.Message, state: FSMContext):
@@ -365,10 +281,6 @@ def register_handlers_note_today(dp : Dispatcher):
     dp.register_callback_query_handler(change_status_finisher, state=FSM_today_status_change.finish)
 
     dp.register_callback_query_handler(row_delete_today, state=FSM_note_today_delete.delete_row)
-
-    dp.register_message_handler(sms_start_today, commands = 'sms_today')
-    dp.register_callback_query_handler(sms_choose_today, state=FSM_note_today_sms.sms_start)
-    dp.register_callback_query_handler(sms_change_today, state=FSM_note_today_sms.sms_change_today)
 
     dp.register_message_handler(cmd_cancel, commands="cancel", state="*")
     dp.register_message_handler(cmd_cancel, Text(equals="отмена", ignore_case=True), state="*")
