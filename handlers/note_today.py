@@ -6,11 +6,11 @@ import sqlite3
 from create_bot import bot
 from aiogram.dispatcher.filters import Text
 
-async def note_today_show_m (message : types.Message):
-    path = 'user_profiles/' + str(message.from_user.id) + '.db'
+async def note_today_show(id):
+    path = 'user_profiles/' + str(id) + '.db'
     base = sqlite3.connect(path)
     cur = base.cursor()
-    time = cur.execute('SELECT * FROM note_today ORDER BY time ASC').fetchall()
+    time = cur.execute(f'SELECT * FROM note_today ORDER BY time ASC').fetchall()
     lst = [*(x for t in time for x in t)]
     i = 0
     list = []
@@ -19,27 +19,24 @@ async def note_today_show_m (message : types.Message):
             list.append(lst[i] + " " + lst[i + 1] + " " + lst[i+2])
             i += 3
         base.close()
-        await bot.send_message(message.chat.id, 'Ваши задачи сегодня:' + "\n\n" + "\n".join(list))
+        await bot.send_message(id, 'Ваши задачи сегодня:' + "\n\n" + "\n".join(list))
     else:
-        await bot.send_message(message.chat.id, 'У вас нет задач на сегодня')
+        await bot.send_message(id, 'Список пуст')
 
-async def note_today_show_c(callback : types.CallbackQuery):
+
+async def list_buttons_note(callback):
     path = 'user_profiles/' + str(callback.from_user.id) + '.db'
     base = sqlite3.connect(path)
     cur = base.cursor()
-    time = cur.execute('SELECT * FROM note_today ORDER BY time ASC').fetchall()
+    time = cur.execute('SELECT time, description, status FROM note_today ORDER BY time ASC').fetchall()
     lst = [*(x for t in time for x in t)]
-    if len(lst):
-        i = 0
-        list = []
-        while i < len(lst):
-            list.append(lst[i] + " " + lst[i + 1] + " " + lst[i+2])
-            i += 3
-        base.close()
-        await callback.message.answer('Ваши задачи сегодня:' + "\n\n" + "\n".join(list))
-    else:
-        await callback.message.answer( 'У вас нет задач на сегодня')
-
+    base.close()
+    keyboard_time = InlineKeyboardMarkup()
+    i = 0
+    while i < len(lst):
+        keyboard_time.add(InlineKeyboardButton(text=f'{lst[i]} {lst[i+1]} {lst[i+2]}', callback_data=f'{lst[i]}'))
+        i += 3
+    await callback.message.answer('Выберите значение', reply_markup=keyboard_time)
 
 
 class FSM_note_today_add(StatesGroup):
@@ -52,6 +49,9 @@ class FSM_note_today_change(StatesGroup):
     change_row = State()
     change_value = State()
 
+class FSM_today_status_change(StatesGroup):
+    start = State()
+    finish = State()
 class FSM_note_today_delete(StatesGroup):
     delete_row = State()
 
@@ -66,12 +66,15 @@ async def note_today(message : types.Message):
     button1 = InlineKeyboardButton(text = "Добавить запись", callback_data='add_today')
     button2 = InlineKeyboardButton(text= 'Изменить', callback_data='change_today')
     button3 = InlineKeyboardButton(text= 'Удалить', callback_data='delete_today')
-    keyboard.add(button1, button2, button3)
+    button4 = InlineKeyboardButton(text = 'Показать', callback_data='button_show_today')
+    keyboard.add(button4, button1, button2, button3)
     await message.reply('Что вы хотите сделать?', reply_markup = keyboard)
 
 
 async def listener_today(callback :  types.CallbackQuery):
-    if callback.data == 'add_today':
+    if callback.data =='button_show_today':
+        await note_today_show(callback.from_user.id)
+    elif callback.data == 'add_today':
         await FSM_note_today_add.addtime.set()
         await callback.message.answer('Введите время')
     elif callback.data == 'change_today':
@@ -136,7 +139,7 @@ async def add_discription_today(callback: types.CallbackQuery, state: FSMContext
             base.commit()
             base.close()
         await state.finish()
-        await note_today_show_c(callback)
+        await note_today_show(callback.from_user.id)
     elif callback.data == 'sms_today_n':
         async with state.proxy() as data:
             path = 'user_profiles/' + str(callback.from_user.id) + '.db'
@@ -147,7 +150,7 @@ async def add_discription_today(callback: types.CallbackQuery, state: FSMContext
             base.commit()
             base.close()
         await state.finish()
-        await note_today_show_c(callback)
+        await note_today_show(callback.from_user.id)
     else:
         await callback.message.answer('Жми кнопки :)')
         return
@@ -156,66 +159,38 @@ async def listener_change_today(callback : types.CallbackQuery, state: FSMContex
     if callback.data == 'time_change_today':
         async with state.proxy() as data:
             data['choose'] = 'time'
+        await list_buttons_note(callback)
+        await FSM_note_today_change.next()
     elif callback.data == 'description_change_today':
         async with state.proxy() as data:
             data['choose'] = 'description'
+        await list_buttons_note(callback)
+        await FSM_note_today_change.next()
     elif callback.data == 'status_change_today':
         async with state.proxy() as data:
             data['choose'] = 'status'
-    await FSM_note_today_change.next()
-    path = 'user_profiles/' + str(callback.from_user.id) + '.db'
-    base = sqlite3.connect(path)
-    cur = base.cursor()
-    time = cur.execute('SELECT time, description, status FROM note_today ORDER BY time ASC').fetchall()
-    lst = [*(x for t in time for x in t)]
-    base.close()
-    keyboard_time = InlineKeyboardMarkup()
-    i = 0
-    while i < len(lst):
-        keyboard_time.add(InlineKeyboardButton(text=f'{lst[i]} {lst[i+1]} {lst[i+2]}', callback_data=f'{lst[i]}'))
-        i += 3
-    await callback.message.answer('Выберите значение', reply_markup=keyboard_time)
+        await state.finish()
+        await list_buttons_note(callback)
+        await FSM_today_status_change.start.set()
+
+
 
 async def change_row_today(callback : types.CallbackQuery, state: FSMContext):
-    path = 'user_profiles/' + str(callback.from_user.id) + '.db'
-    base = sqlite3.connect(path)
-    cur = base.cursor()
-    time = cur.execute('SELECT time FROM note_today').fetchall()
-    base.close()
-    lst = [*(x for t in time for x in t)]
-    if callback.data not in lst:
-        await callback.message.answer("Жми кнопки :)")
-        return
-    else:
-        async with state.proxy() as data:
-            if data['choose'] == 'time' or data['choose'] == 'description':
-                data['old_value'] = callback.data
-                await callback.message.answer("Введите новые данные")
-                await FSM_note_today_change.next()
-            else:
-                data['old_value'] = callback.data
-                path = 'user_profiles/' + str(callback.from_user.id) + '.db'
-                base = sqlite3.connect(path)
-                cur = base.cursor()
-                r = cur.execute(f'SELECT status FROM note_today WHERE time == ?', (data['old_value'],)).fetchone()
-                if r[0] == '❌' or r[0] == '🕔':
-                    cur.execute(f"UPDATE note_today SET {data['choose']} == ? WHERE time == ?",
-                                ('✅', data['old_value']))
-                else:
-                    cur.execute(f"UPDATE note_today SET {data['choose']} == ? WHERE time == ?",
-                                ('❌', data['old_value']))
-                base.commit()
-                time = cur.execute('SELECT * FROM note_today ORDER BY time ASC').fetchall()
-                lst = [*(x for t in time for x in t)]
-                i = 0
-                list = []
-                while i < len(lst):
-                    list.append(lst[i] + " " + lst[i + 1] + " " + lst[i + 2])
-                    i += 3
-                base.close()
-                await callback.message.answer('Изменения произведены')
-                await callback.message.answer('Ваши задачи сегодня:' + "\n\n" + "\n".join(list))
-                await state.finish()
+    # path = 'user_profiles/' + str(callback.from_user.id) + '.db'
+    # base = sqlite3.connect(path)
+    # cur = base.cursor()
+    # time = cur.execute('SELECT time FROM note_today').fetchall()
+    # base.close()
+    # lst = [*(x for t in time for x in t)]
+    # if callback.data not in lst:
+    #     await callback.message.answer("Жми кнопки :)")
+    #     return
+    # else:
+    async with state.proxy() as data:
+        if data['choose'] == 'time' or data['choose'] == 'description':
+            data['old_value'] = callback.data
+            await callback.message.answer("Введите новые данные")
+            await FSM_note_today_change.next()
 
 
 async def change_value_today(message : types.Message, state : FSMContext):
@@ -230,7 +205,33 @@ async def change_value_today(message : types.Message, state : FSMContext):
         base.close()
     await state.finish()
     await bot.send_message(message.chat.id, 'Данные обновлены')
-    await note_today_show_m(message)
+    await note_today_show(message.from_user.id)
+
+async def change_status_listener(callback : types.CallbackQuery, state: FSMContext):
+    async with state.proxy() as data:
+        data["old_value"] = callback.data
+    keyboard_change = InlineKeyboardMarkup()
+    button_change1 = InlineKeyboardButton(text='✅', callback_data='✅')
+    button_change2 = InlineKeyboardButton(text='🕔', callback_data='🕔')
+    button_change3 = InlineKeyboardButton(text='❌', callback_data='❌')
+    keyboard_change.add(button_change1, button_change2, button_change3)
+    await callback.message.answer('Выберете статус?', reply_markup=keyboard_change)
+    await FSM_today_status_change.next()
+
+async def change_status_finisher(callback : types.CallbackQuery, state: FSMContext):
+    async with state.proxy() as data:
+        data["new_value"] = callback.data
+        path = 'user_profiles/' + str(callback.from_user.id) + '.db'
+        base = sqlite3.connect(path)
+        cur = base.cursor()
+        cur.execute(f"UPDATE note_today SET status == ? WHERE time == ?",
+                    (data['new_value'], data['old_value']))
+        base.commit()
+        base.close()
+    await state.finish()
+    await callback.message.answer('Данные обновлены')
+    await note_today_show(callback.from_user.id)
+
 
 async def row_delete_today(callback : types.CallbackQuery, state: FSMContext):
     path = 'user_profiles/' + str(callback.from_user.id) + '.db'
@@ -254,6 +255,7 @@ async def row_delete_today(callback : types.CallbackQuery, state: FSMContext):
             base.close()
         await state.finish()
         await callback.message.answer('Запись удалена')
+        await note_today_show(callback.from_user.id)
 
 
 async def sms_start_today(message : types.Message):
@@ -304,7 +306,7 @@ async def sms_change_today(callback : types.CallbackQuery, state: FSMContext):
         base.close()
         await state.finish()
         await callback.message.answer('Уведомления включены')
-        await note_today_show_c(callback)
+        await note_today_show(callback.from_user.id)
     elif callback.data == 'sms_all_off':
         path = 'user_profiles/' + str(callback.from_user.id) + '.db'
         base = sqlite3.connect(path)
@@ -340,7 +342,7 @@ async def sms_change_today(callback : types.CallbackQuery, state: FSMContext):
                 base.close()
                 await callback.message.answer('Статус изменен')
     await state.finish()
-    await note_today_show_c(callback)
+    await note_today_show(callback.from_user.id)
 
 
 async def cmd_cancel(message: types.Message, state: FSMContext):
@@ -348,9 +350,8 @@ async def cmd_cancel(message: types.Message, state: FSMContext):
     await message.answer("Действие отменено")
 
 def register_handlers_note_today(dp : Dispatcher):
-    dp.register_message_handler(note_today_show_m, commands=['tasks'])
-    dp.register_message_handler(note_today, commands=['tasks_change'])
-    dp.register_callback_query_handler(listener_today, lambda call: call.data == 'add_today' or call.data == "change_today" or call.data == "delete_today")
+    dp.register_message_handler(note_today, commands=['note_today'])
+    dp.register_callback_query_handler(listener_today, lambda call: call.data == 'add_today' or call.data == "change_today" or call.data == "delete_today" or call.data == "button_show_today")
 
     dp.register_message_handler(add_time_today, state=FSM_note_today_add.addtime)
     dp.register_message_handler(status_note_today, state=FSM_note_today_add.status_note_today)
@@ -359,6 +360,9 @@ def register_handlers_note_today(dp : Dispatcher):
     dp.register_callback_query_handler(listener_change_today, state=FSM_note_today_change.change_choose)
     dp.register_callback_query_handler(change_row_today, state=FSM_note_today_change.change_row)
     dp.register_message_handler(change_value_today, state=FSM_note_today_change.change_value)
+
+    dp.register_callback_query_handler(change_status_listener, state=FSM_today_status_change.start)
+    dp.register_callback_query_handler(change_status_finisher, state=FSM_today_status_change.finish)
 
     dp.register_callback_query_handler(row_delete_today, state=FSM_note_today_delete.delete_row)
 
